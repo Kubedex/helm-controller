@@ -8,7 +8,6 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sort"
 
 	helmv1 "gitlab.com/pearsontechnology/helm-controller/pkg/apis/helm/v1"
