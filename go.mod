@@ -1,7 +1,8 @@
-module gitlab.com/pearsontechnology/helm-controller
+module github.com/Kubedex/helm-controller
 
 require (
 	github.com/NYTimes/gziphandler v1.0.1 // indirect
+	github.com/go-logr/logr v0.1.0
 	github.com/operator-framework/operator-sdk v0.9.1-0.20190729152335-7a35cfc9a7cf
 	github.com/spf13/pflag v1.0.3
 	k8s.io/api v0.0.0-20190612125737-db0771252981

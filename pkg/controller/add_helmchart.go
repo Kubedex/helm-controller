@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"gitlab.com/pearsontechnology/helm-controller/pkg/controller/helmchart"
+	"github.com/Kubedex/helm-controller/pkg/controller/helmchart"
 )
 
 func init() {

@@ -11,9 +11,9 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChart":       schema_pkg_apis_helm_v1_HelmChart(ref),
-		"github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChartSpec":   schema_pkg_apis_helm_v1_HelmChartSpec(ref),
-		"github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChartStatus": schema_pkg_apis_helm_v1_HelmChartStatus(ref),
+		"github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChart":       schema_pkg_apis_helm_v1_HelmChart(ref),
+		"github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChartSpec":   schema_pkg_apis_helm_v1_HelmChartSpec(ref),
+		"github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChartStatus": schema_pkg_apis_helm_v1_HelmChartStatus(ref),
 	}
 }
 
@@ -44,19 +44,19 @@ func schema_pkg_apis_helm_v1_HelmChart(ref common.ReferenceCallback) common.Open
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChartSpec"),
+							Ref: ref("github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChartSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChartStatus"),
+							Ref: ref("github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChartStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChartSpec", "github.com/pearsontechnology/helm-controller/pkg/apis/helm/v1.HelmChartStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChartSpec", "github.com/Kubedex/helm-controller/pkg/apis/helm/v1.HelmChartStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 

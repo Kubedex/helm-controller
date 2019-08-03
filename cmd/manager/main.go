@@ -11,8 +11,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"gitlab.com/pearsontechnology/helm-controller/pkg/apis"
-	"gitlab.com/pearsontechnology/helm-controller/pkg/controller"
+	"github.com/Kubedex/helm-controller/pkg/apis"
+	"github.com/Kubedex/helm-controller/pkg/controller"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"

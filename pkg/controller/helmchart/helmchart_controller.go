@@ -10,7 +10,7 @@ import (
 	"os"
 	"sort"
 
-	helmv1 "gitlab.com/pearsontechnology/helm-controller/pkg/apis/helm/v1"
+	helmv1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -30,7 +30,7 @@ import (
 
 var log = logf.Log.WithName("controller_helmchart")
 
-const helmChartFinalizer = "finalizer.helm.cattle.io"
+const helmChartFinalizer = "finalizer.helm.kubedex.com"
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -62,7 +62,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
+	/*// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner HelmChart
 	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -70,7 +70,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	})
 	if err != nil {
 		return err
-	}
+	}*/
 
 	return nil
 }
@@ -111,39 +111,104 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	// Check if this Job already exists
-	found := &batchv1.Job{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Job", "Pod.Namespace", instance.Namespace, "Pod.Name", instance.Name)
-		// Define a new job object
-		job, configmap := r.newJob(instance, "")
-		// Define role binding
-		rb := r.roleBinding(instance)
-		// Define service account
-		sa := r.serviceAccount(instance)
+	// Define service account
+	sa := r.serviceAccount(instance)
+	foundSA := &corev1.ServiceAccount{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name: sa.Name,
+		Namespace: instance.Namespace}, foundSA)
 
+	// check the job exist if not crete
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new ServiceAccount", "SA.Namespace",
+			instance.Namespace, "SA.Name", fmt.Sprintf("helm-%s", instance.Name))
+
+		// create a api request to create service account
+		// if failed reconcile again
 		err = r.client.Create(context.TODO(), sa)
 		if err != nil {
+			// requeue the job
 			return reconcile.Result{}, err
 		}
+		// move to next step
+	} else if err != nil {
+		// if error anything else return with failure
+		reqLogger.Error(err, "Failed to create ServiceAccount for helm deployment job")
+		// requeue the job
+		return reconcile.Result{}, err
+	}
 
+	// Define role binding
+	rb := r.roleBinding(instance)
+	foundRB := &corev1.ServiceAccount{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name: sa.Name,
+		Namespace: instance.Namespace}, foundRB)
+
+	// check the job exist if not crete
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new RoleBinding", "RB.Namespace",
+			instance.Namespace, "RB.Name", fmt.Sprintf("helm-%s", instance.Name))
+
+		// create a api request to create RoleBinding
+		// if failed reconcile again
 		err = r.client.Create(context.TODO(), rb)
 		if err != nil {
+			// requeue the job
 			return reconcile.Result{}, err
 		}
+		// move to next step
+	} else if err != nil {
+		// if error anything else return with failure
+		reqLogger.Error(err, "Failed to create RoleBinding for helm deployment job")
+		// requeue the job
+		return reconcile.Result{}, err
+	}
 
-		err = r.client.Create(context.TODO(), configmap)
-		if err != nil {
+	// Define ConfigMap
+	configMap := r.configMap(instance)
+	// config map will exist only if value overrides are defined
+	if configMap == nil {
+		foundCM := &corev1.ConfigMap{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{
+			Name: sa.Name,
+			Namespace: instance.Namespace}, foundCM)
+
+		// check the job exist if not crete
+		if err != nil && errors.IsNotFound(err) {
+			reqLogger.Info("Creating a new ConfigMap", "CM.Namespace",
+				instance.Namespace, "CM.Name", fmt.Sprintf("helm-%s", instance.Name))
+
+			// create a api request to create ConfigMap
+			// if failed reconcile again
+			err = r.client.Create(context.TODO(), configMap)
+			if err != nil {
+				// requeue the job
+				return reconcile.Result{}, err
+			}
+			// move to next step
+		} else if err != nil {
+			// if error anything else return with failure
+			reqLogger.Error(err, "Failed to create ConfigMap for helm deployment job")
+			// requeue the job
 			return reconcile.Result{}, err
 		}
+	}
+
+	// Define a new job object
+	job := r.newJob(instance, "")
+	// Check if this Job already exists
+	found := &batchv1.Job{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{
+		Name: job.Name,
+		Namespace: job.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		reqLogger.Info("Creating a new Job", "Job.Namespace", job.Namespace, "Job.Name", job.Name)
 
 		err = r.client.Create(context.TODO(), job)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		// job created successfully
-		return reconcile.Result{}, nil
 	} else if err != nil {
 		reqLogger.Error(err, "Failed to get Helm deployment job")
 		return reconcile.Result{}, err
@@ -169,7 +234,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 				return reconcile.Result{}, err
 			}
 		}
-		return reconcile.Result{}, nil
+		return reconcile.Result{Requeue:false}, nil
 	}
 
 	// Add finalizer for this CR
@@ -177,13 +242,12 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 		if err := r.addFinalizer(reqLogger, instance); err != nil {
 			return reconcile.Result{}, err
 		}
+		// added finalizer and we are good
+		return reconcile.Result{Requeue:false}, nil
 	}
 
-	//
-	job := *found
 	version := ""
-
-	for _, v := range job.Spec.Template.Spec.Containers[0].Env {
+	for _, v := range (*found).Spec.Template.Spec.Containers[0].Env {
 		if v.Name == "VERSION" {
 			version = v.Value
 		}
@@ -203,12 +267,12 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 
 	// Job already exists - don't requeue
 	reqLogger.Info("Skip reconcile: Job already exists", "Job.Namespace", found.Namespace, "Job.Name", found.Name)
-	return reconcile.Result{}, nil
+	return reconcile.Result{Requeue:false}, nil
 }
 
 func (r *ReconcileHelmChart) finalizeHelmChart(reqLogger logr.Logger, m *helmv1.HelmChart) error {
 	// create a delete job
-	job, _ := r.newJob(m, "delete")
+	job := r.newJob(m, "delete")
 	found := &batchv1.Job{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, found)
 
@@ -258,7 +322,7 @@ func (r *ReconcileHelmChart) addFinalizer(reqLogger logr.Logger, m *helmv1.HelmC
 	return nil
 }
 
-func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*batchv1.Job, *corev1.ConfigMap) {
+func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*batchv1.Job) {
 	oneThousand := int32(1000)
 	valuesHash := sha256.Sum256([]byte(chart.Spec.ValuesContent))
 
@@ -302,11 +366,11 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 								},
 								{
 									Name:  "VERSION",
-									Value: "chart.Spec.Version",
+									Value: chart.Spec.Version,
 								},
 								{
 									Name:  "REPO",
-									Value: "chart.Spec.Repo",
+									Value: chart.Spec.Repo,
 								},
 								{
 									Name:  "VALUES_HASH",
@@ -321,10 +385,6 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 		},
 	}
 	setProxyEnv(job)
-	configMap := r.configMap(chart)
-	if configMap == nil {
-		return job, nil
-	}
 
 	job.Spec.Template.Spec.Volumes = []corev1.Volume{
 		{
@@ -332,7 +392,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: configMap.Name,
+						Name: fmt.Sprintf("chart-values-%s", chart.Name),
 					},
 				},
 			},
@@ -348,7 +408,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 
 	// Set service account instance as the owner and controller
 	controllerutil.SetControllerReference(chart, job, r.scheme)
-	return job, configMap
+	return job
 }
 
 func (r *ReconcileHelmChart) configMap(chart *helmv1.HelmChart) *corev1.ConfigMap {

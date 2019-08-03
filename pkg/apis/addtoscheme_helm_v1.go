@@ -1,7 +1,7 @@
 package apis
 
 import (
-	v1 "gitlab.com/pearsontechnology/helm-controller/pkg/apis/helm/v1"
+	v1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
 )
 
 func init() {
