@@ -309,7 +309,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 					Containers: []corev1.Container{
 						{
 							Name:            "helm",
-							Image:           "rancher/klipper-helm:v0.1.5",
+							Image:           getEnv("KLIPPER_IMAGE","rancher/klipper-helm:v0.1.5",""),
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Args:            args(chart),
 							Env: []corev1.EnvVar{
@@ -519,4 +519,17 @@ func remove(list []string, s string) []string {
 		}
 	}
 	return list
+}
+
+func getEnv(env string, def string, override string) string {
+	// return override regardless
+	if len(override) > 0 {
+		return override
+	}
+	// lookup environemnt and if value not found return default else return value
+	v, found := os.LookupEnv(env)
+	if !found {
+		return def
+	}
+	return v
 }
