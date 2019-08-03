@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 	"sort"
@@ -20,11 +19,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -98,8 +97,8 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	reqLogger.Info("Reconciling HelmChart")
 
 	// Fetch the HelmChart instance
-	instance := &helmv1.HelmChart{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	chart := &helmv1.HelmChart{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, chart)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -112,16 +111,16 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Define service account
-	sa := r.serviceAccount(instance)
+	sa := r.serviceAccount(chart)
 	foundSA := &corev1.ServiceAccount{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: sa.Name,
-		Namespace: instance.Namespace}, foundSA)
+		Name: sa.ObjectMeta.Name,
+		Namespace: sa.ObjectMeta.Namespace}, foundSA)
 
 	// check the job exist if not crete
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new ServiceAccount", "SA.Namespace",
-			instance.Namespace, "SA.Name", fmt.Sprintf("helm-%s", instance.Name))
+			sa.ObjectMeta.Namespace, "SA.Name", sa.ObjectMeta.Name,)
 
 		// create a api request to create service account
 		// if failed reconcile again
@@ -139,16 +138,16 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Define role binding
-	rb := r.roleBinding(instance)
-	foundRB := &corev1.ServiceAccount{}
+	rb := r.roleBinding(chart)
+	foundRB := &rbacv1.ClusterRoleBinding{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: sa.Name,
-		Namespace: instance.Namespace}, foundRB)
+		Name: rb.ObjectMeta.Name,
+		Namespace: rb.ObjectMeta.Namespace}, foundRB)
 
 	// check the job exist if not crete
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new RoleBinding", "RB.Namespace",
-			instance.Namespace, "RB.Name", fmt.Sprintf("helm-%s", instance.Name))
+			rb.ObjectMeta.Namespace, "RB.Name", rb.ObjectMeta.Name)
 
 		// create a api request to create RoleBinding
 		// if failed reconcile again
@@ -166,18 +165,18 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Define ConfigMap
-	configMap := r.configMap(instance)
+	configMap := r.configMap(chart)
 	// config map will exist only if value overrides are defined
-	if configMap == nil {
+	if configMap != nil {
 		foundCM := &corev1.ConfigMap{}
 		err = r.client.Get(context.TODO(), types.NamespacedName{
-			Name: sa.Name,
-			Namespace: instance.Namespace}, foundCM)
+			Name: configMap.ObjectMeta.Name,
+			Namespace: configMap.ObjectMeta.Namespace}, foundCM)
 
 		// check the job exist if not crete
 		if err != nil && errors.IsNotFound(err) {
 			reqLogger.Info("Creating a new ConfigMap", "CM.Namespace",
-				instance.Namespace, "CM.Name", fmt.Sprintf("helm-%s", instance.Name))
+				configMap.ObjectMeta.Namespace, "CM.Name", configMap.ObjectMeta.Name)
 
 			// create a api request to create ConfigMap
 			// if failed reconcile again
@@ -196,19 +195,21 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Define a new job object
-	job := r.newJob(instance, "")
+	job := r.newJob(chart, "")
 	// Check if this Job already exists
 	found := &batchv1.Job{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: job.Name,
-		Namespace: job.Namespace}, found)
+		Name: job.ObjectMeta.Name,
+		Namespace: job.ObjectMeta.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Job", "Job.Namespace", job.Namespace, "Job.Name", job.Name)
+		reqLogger.Info("Creating a new Job", "Job.Namespace", job.ObjectMeta.Namespace, "Job.Name", job.ObjectMeta.Name)
 
 		err = r.client.Create(context.TODO(), job)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		// the job is created, update the job info
+		found = job
 	} else if err != nil {
 		reqLogger.Error(err, "Failed to get Helm deployment job")
 		return reconcile.Result{}, err
@@ -216,20 +217,24 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 
 	// Check if the HelmChart instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
-	isHelmChartMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
+	isHelmChartMarkedToBeDeleted := chart.GetDeletionTimestamp() != nil
 	if isHelmChartMarkedToBeDeleted {
-		if contains(instance.GetFinalizers(), helmChartFinalizer) {
+		if contains(chart.GetFinalizers(), helmChartFinalizer) {
 			// Run finalization logic for helmchartFinalizer. If the
 			// finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-			if err := r.finalizeHelmChart(reqLogger, instance); err != nil {
+			if err := r.finalizeHelmChart(reqLogger, chart); err != nil {
+				if err.Error() == "job update required" {
+					reqLogger.Info("requeue for finalize")
+					return  reconcile.Result{Requeue:true}, nil
+				}
 				return reconcile.Result{}, err
 			}
 
 			// Remove helmchartFinalizer. Once all finalizers have been
 			// removed, the object will be deleted.
-			instance.SetFinalizers(remove(instance.GetFinalizers(), helmChartFinalizer))
-			err := r.client.Update(context.TODO(), instance)
+			chart.SetFinalizers(remove(chart.GetFinalizers(), helmChartFinalizer))
+			err := r.client.Update(context.TODO(), chart)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -238,8 +243,8 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Add finalizer for this CR
-	if !contains(instance.GetFinalizers(), helmChartFinalizer) {
-		if err := r.addFinalizer(reqLogger, instance); err != nil {
+	if !contains(chart.GetFinalizers(), helmChartFinalizer) {
+		if err := r.addFinalizer(reqLogger, chart); err != nil {
 			return reconcile.Result{}, err
 		}
 		// added finalizer and we are good
@@ -254,7 +259,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// ensure job spec version is the same as env and args
-	if version != instance.Spec.Version {
+	if version != chart.Spec.Version {
 		// remove job before creating new
 		err = r.client.Delete(context.TODO(), found)
 		if err != nil {
@@ -268,58 +273,6 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	// Job already exists - don't requeue
 	reqLogger.Info("Skip reconcile: Job already exists", "Job.Namespace", found.Namespace, "Job.Name", found.Name)
 	return reconcile.Result{Requeue:false}, nil
-}
-
-func (r *ReconcileHelmChart) finalizeHelmChart(reqLogger logr.Logger, m *helmv1.HelmChart) error {
-	// create a delete job
-	job := r.newJob(m, "delete")
-	found := &batchv1.Job{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, found)
-
-	if err != nil && errors.IsNotFound(err) {
-		err := r.client.Create(context.TODO(), job)
-		if err != nil {
-			reqLogger.Error(err, "Failed create helm destory job", "Job.Namespace", job.Namespace, "Job.Name", job.Name)
-			return err
-		}
-	} else if err != nil {
-		reqLogger.Error(err, "Failed to get Helm deployment job")
-		return err
-	}
-
-	// job alredy exist, check the job status
-	if found.Status.Failed == 0 {
-		// no failed jobs, hence delete the job
-		err := r.client.Delete(context.TODO(), found)
-		if err != nil {
-			// requeue the delete request
-			return  err
-		}
-	} else {
-		// previous job has failed try deleting the job
-		// then next reconcile can re-try
-		err := r.client.Delete(context.TODO(), job)
-		if err != nil {
-			reqLogger.Error(err, "Failed delete helm destory job", "Job.Namespace", job.Namespace, "Job.Name", job.Name)
-			return err
-		}
-		return err
-	}
-	reqLogger.Info("Successfully finalized helm chart")
-	return nil
-}
-
-func (r *ReconcileHelmChart) addFinalizer(reqLogger logr.Logger, m *helmv1.HelmChart) error {
-	reqLogger.Info("Adding Finalizer for the helm chart")
-	m.SetFinalizers(append(m.GetFinalizers(), helmChartFinalizer))
-
-	// Update CR
-	err := r.client.Update(context.TODO(), m)
-	if err != nil {
-		reqLogger.Error(err, "Failed to update helm chart with finalizer")
-		return err
-	}
-	return nil
 }
 
 func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*batchv1.Job) {
@@ -480,7 +433,7 @@ func (r *ReconcileHelmChart) serviceAccount(chart *helmv1.HelmChart) *corev1.Ser
 }
 
 func args(chart *helmv1.HelmChart) []string {
-	if chart.DeletionTimestamp != nil {
+	if chart.GetDeletionTimestamp() != nil {
 		return []string{
 			"delete",
 			"--purge", chart.Name,
