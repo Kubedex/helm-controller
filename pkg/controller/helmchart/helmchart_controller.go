@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
+	"reflect"
 	"sort"
 
 	helmv1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
@@ -61,16 +62,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	/*// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner HelmChart
-	err = c.Watch(&source.Kind{Type: &batchv1.Job{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &helmv1.HelmChart{},
-	})
-	if err != nil {
-		return err
-	}*/
-
 	return nil
 }
 
@@ -87,8 +78,6 @@ type ReconcileHelmChart struct {
 
 // Reconcile reads that state of the cluster for a HelmChart object and makes changes based on the state read
 // and what is in the HelmChart.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -191,6 +180,16 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 			reqLogger.Error(err, "Failed to create ConfigMap for helm deployment job")
 			// requeue the job
 			return reconcile.Result{}, err
+		}
+
+		// check configMap has updates
+		if !reflect.DeepEqual(foundCM, configMap) {
+			err = r.client.Update(context.TODO(), configMap)
+			if err != nil {
+				// requeue the job
+				return reconcile.Result{}, err
+			}
+			// move to next step
 		}
 	}
 
@@ -360,7 +359,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 	}
 
 	// Set service account instance as the owner and controller
-	controllerutil.SetControllerReference(chart, job, r.scheme)
+	_ = controllerutil.SetControllerReference(chart, job, r.scheme)
 	return job
 }
 
@@ -383,7 +382,7 @@ func (r *ReconcileHelmChart) configMap(chart *helmv1.HelmChart) *corev1.ConfigMa
 		},
 	}
 	// Set service account instance as the owner and controller
-	controllerutil.SetControllerReference(chart, cm, r.scheme)
+	_ = controllerutil.SetControllerReference(chart, cm, r.scheme)
 	return cm
 }
 
@@ -410,7 +409,7 @@ func (r *ReconcileHelmChart) roleBinding(chart *helmv1.HelmChart) *rbacv1.Cluste
 		},
 	}
 	// Set service account instance as the owner and controller
-	controllerutil.SetControllerReference(chart, rb, r.scheme)
+	_ = controllerutil.SetControllerReference(chart, rb, r.scheme)
 	return rb
 }
 
@@ -428,7 +427,7 @@ func (r *ReconcileHelmChart) serviceAccount(chart *helmv1.HelmChart) *corev1.Ser
 		AutomountServiceAccountToken: &trueVal,
 	}
 	// Set service account instance as the owner and controller
-	controllerutil.SetControllerReference(chart, sa, r.scheme)
+	_ = controllerutil.SetControllerReference(chart, sa, r.scheme)
 	return sa
 }
 
@@ -526,7 +525,7 @@ func getEnv(env string, def string, override string) string {
 	if len(override) > 0 {
 		return override
 	}
-	// lookup environemnt and if value not found return default else return value
+	// lookup environments and if value not found return default else return value
 	v, found := os.LookupEnv(env)
 	if !found {
 		return def
