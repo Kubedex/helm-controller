@@ -153,6 +153,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
+	updatedConfig := false
 	// Define ConfigMap
 	configMap := r.configMap(chart)
 	// config map will exist only if value overrides are defined
@@ -189,6 +190,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 				// requeue the job
 				return reconcile.Result{}, err
 			}
+			updatedConfig := true
 			// move to next step
 		}
 	}
@@ -258,7 +260,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// ensure job spec version is the same as env and args
-	if version != chart.Spec.Version {
+	if version != chart.Spec.Version || updatedConfig {
 		// remove job before creating new
 		err = r.client.Delete(context.TODO(), found)
 		if err != nil {
