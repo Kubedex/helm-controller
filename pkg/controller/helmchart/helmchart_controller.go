@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
-	"reflect"
 	"sort"
 
 	helmv1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
@@ -103,13 +102,13 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	sa := r.serviceAccount(chart)
 	foundSA := &corev1.ServiceAccount{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: sa.ObjectMeta.Name,
+		Name:      sa.ObjectMeta.Name,
 		Namespace: sa.ObjectMeta.Namespace}, foundSA)
 
 	// check the job exist if not crete
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new ServiceAccount", "SA.Namespace",
-			sa.ObjectMeta.Namespace, "SA.Name", sa.ObjectMeta.Name,)
+			sa.ObjectMeta.Namespace, "SA.Name", sa.ObjectMeta.Name, )
 
 		// create a api request to create service account
 		// if failed reconcile again
@@ -130,7 +129,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	rb := r.roleBinding(chart)
 	foundRB := &rbacv1.ClusterRoleBinding{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: rb.ObjectMeta.Name,
+		Name:      rb.ObjectMeta.Name,
 		Namespace: rb.ObjectMeta.Namespace}, foundRB)
 
 	// check the job exist if not crete
@@ -153,14 +152,13 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	updatedConfig := false
 	// Define ConfigMap
 	configMap := r.configMap(chart)
 	// config map will exist only if value overrides are defined
 	if configMap != nil {
 		foundCM := &corev1.ConfigMap{}
 		err = r.client.Get(context.TODO(), types.NamespacedName{
-			Name: configMap.ObjectMeta.Name,
+			Name:      configMap.ObjectMeta.Name,
 			Namespace: configMap.ObjectMeta.Namespace}, foundCM)
 
 		// check the job exist if not crete
@@ -182,17 +180,6 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 			// requeue the job
 			return reconcile.Result{}, err
 		}
-
-		// check configMap has updates
-		if !reflect.DeepEqual(foundCM.Data, configMap.Data) {
-			err = r.client.Update(context.TODO(), configMap)
-			if err != nil {
-				// requeue the job
-				return reconcile.Result{}, err
-			}
-			updatedConfig = true
-			// move to next step
-		}
 	}
 
 	// Define a new job object
@@ -200,7 +187,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	// Check if this Job already exists
 	found := &batchv1.Job{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{
-		Name: job.ObjectMeta.Name,
+		Name:      job.ObjectMeta.Name,
 		Namespace: job.ObjectMeta.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new Job", "Job.Namespace", job.ObjectMeta.Namespace, "Job.Name", job.ObjectMeta.Name)
@@ -227,7 +214,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 			if err := r.finalizeHelmChart(reqLogger, chart); err != nil {
 				if err.Error() == "job update required" {
 					reqLogger.Info("requeue for finalize")
-					return  reconcile.Result{Requeue:true}, nil
+					return reconcile.Result{Requeue: true}, nil
 				}
 				return reconcile.Result{}, err
 			}
@@ -240,7 +227,35 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 				return reconcile.Result{}, err
 			}
 		}
-		return reconcile.Result{Requeue:false}, nil
+		return reconcile.Result{Requeue: false}, nil
+	}
+
+	version := ""
+	valueHash := ""
+	for _, v := range (*found).Spec.Template.Spec.Containers[0].Env {
+		if v.Name == "VERSION" {
+			version = v.Value
+		}
+
+		if v.Name == "VALUES_HASH" {
+			valueHash = v.Value
+		}
+	}
+
+	chartHash := sha256.Sum256([]byte(chart.Spec.ValuesContent))
+	// remove existing job if version or the value hash is different
+	if version != chart.Spec.Version || valueHash != hex.EncodeToString(chartHash[:]) {
+		reqLogger.Info("Removing job for helm update",
+			"Job.Namespace", found.ObjectMeta.Namespace, "Job.Name", found.ObjectMeta.Name)
+		// remove job before creating new
+		err = r.client.Delete(context.TODO(), found)
+		if err != nil {
+			reqLogger.Error(err, "Failed to update helm update job",
+				"Job.Namespace", found.ObjectMeta.Namespace, "Job.Name", found.ObjectMeta.Name)
+			return reconcile.Result{}, err
+		}
+		// Spec updated - return and requeue
+		return reconcile.Result{Requeue: true}, nil
 	}
 
 	// Add finalizer for this CR
@@ -249,31 +264,13 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 			return reconcile.Result{}, err
 		}
 		// added finalizer and we are good
-		return reconcile.Result{Requeue:false}, nil
-	}
-
-	version := ""
-	for _, v := range (*found).Spec.Template.Spec.Containers[0].Env {
-		if v.Name == "VERSION" {
-			version = v.Value
-		}
-	}
-
-	// ensure job spec version is the same as env and args
-	if version != chart.Spec.Version || updatedConfig {
-		// remove job before creating new
-		err = r.client.Delete(context.TODO(), found)
-		if err != nil {
-			reqLogger.Error(err, "Failed to update helm update job", "Job.Namespace", found.Namespace, "Job.Name", found.Name)
-			return reconcile.Result{}, err
-		}
-		// Spec updated - return and requeue
-		return reconcile.Result{Requeue: true}, nil
+		return reconcile.Result{Requeue: false}, nil
 	}
 
 	// Job already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Job already exists", "Job.Namespace", found.Namespace, "Job.Name", found.Name)
-	return reconcile.Result{Requeue:false}, nil
+	reqLogger.Info("Skip reconcile: Job already exists",
+		"Job.Namespace", found.ObjectMeta.Namespace, "Job.Name", found.ObjectMeta.Name)
+	return reconcile.Result{Requeue: false}, nil
 }
 
 func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*batchv1.Job) {
@@ -310,7 +307,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 					Containers: []corev1.Container{
 						{
 							Name:            "helm",
-							Image:           getEnv("KLIPPER_IMAGE","rancher/klipper-helm:v0.1.5",""),
+							Image:           getEnv("KLIPPER_IMAGE", "rancher/klipper-helm:v0.1.5", ""),
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Args:            args(chart),
 							Env: []corev1.EnvVar{
