@@ -184,13 +184,13 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 
 		// check configMap has updates
-		if !reflect.DeepEqual(foundCM, configMap) {
+		if !reflect.DeepEqual(foundCM.Data, configMap.Data) {
 			err = r.client.Update(context.TODO(), configMap)
 			if err != nil {
 				// requeue the job
 				return reconcile.Result{}, err
 			}
-			updatedConfig := true
+			updatedConfig = true
 			// move to next step
 		}
 	}
