@@ -36,3 +36,7 @@ EOF
 ```
 
 In this example we're installing the kubernetes-dashboard chart into the dashboard namespace and setting some truly dangerous values under valuesContent.
+
+# Credits
+
+Heavily inspired by the [Rancher Helm Controller](https://github.com/rancher/helm-controller).
