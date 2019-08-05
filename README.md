@@ -8,6 +8,8 @@ To upgrade a chart you can use `kubectl apply` to modify the version in the char
 
 To completely remove the chart and do the equivalent of `helm delete --purge` simply delete the CRD.
 
+The image used in the kubernetes job can be customised so you can easily add additional logic or helm plugins. This also means that Helm 3.0 will be supported on the day it goes GA.
+
 # Installation
 
 The default manifests create a service account, role, rolebinding and deployment that runs the operator. It is recommended to run the controller in its own namespace alongside the CRD's that it watches.
