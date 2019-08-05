@@ -1,6 +1,6 @@
 # helm-controller
 
-A simple controller built with the Operator SDK that watches a CRD per Helm Chart within a namespace and manages installation, upgrade and deletes.
+A simple controller built with the [Operator SDK](https://github.com/operator-framework/operator-sdk) that watches a CRD per Helm Chart within a namespace and manages installation, upgrade and deletes.
 
 # Installation
 
