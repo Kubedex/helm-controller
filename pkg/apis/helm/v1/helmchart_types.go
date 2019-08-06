@@ -20,6 +20,7 @@ type HelmChartSpec struct {
 	Repo            string                        `json:"repo,omitempty"`
 	Set             map[string]intstr.IntOrString `json:"set,omitempty"`
 	ValuesContent   string                        `json:"valuesContent,omitempty"`
+	Ignore          bool                          `json:"ignore,omitempty"`
 }
 
 // HelmChartStatus defines the observed state of HelmChart

@@ -99,6 +99,11 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
+	if chart.Spec.Ignore {
+		// ignore updates to this chart
+		return reconcile.Result{}, nil
+	}
+
 	// Define service account
 	sa := r.serviceAccount(chart)
 	foundSA := &corev1.ServiceAccount{}
