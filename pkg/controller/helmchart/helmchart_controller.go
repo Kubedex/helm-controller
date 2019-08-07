@@ -312,7 +312,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart, action string) (*ba
 					Containers: []corev1.Container{
 						{
 							Name:            "helm",
-							Image:           getEnv("KLIPPER_IMAGE", "rancher/klipper-helm:v0.1.5", ""),
+							Image:           getEnv("JOB_IMAGE", "kubedex/helm-controller-jobimage:latest", ""),
 							ImagePullPolicy: corev1.PullIfNotPresent,
 							Args:            args(chart),
 							Env: []corev1.EnvVar{
