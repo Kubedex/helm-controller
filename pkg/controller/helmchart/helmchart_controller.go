@@ -252,6 +252,16 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 	if version != chart.Spec.Version || valueHash != hex.EncodeToString(chartHash[:]) {
 		reqLogger.Info("Removing job for helm update",
 			"Job.Namespace", found.ObjectMeta.Namespace, "Job.Name", found.ObjectMeta.Name)
+
+		if valueHash != hex.EncodeToString(chartHash[:]) && configMap != nil {
+			err = r.client.Update(context.TODO(), configMap)
+			if err != nil {
+				reqLogger.Error(err, "Failed to update configmap",
+					"CM.Namespace", configMap.ObjectMeta.Namespace, "Job.Name", found.ObjectMeta.Name)
+				return reconcile.Result{}, err
+			}
+		}
+
 		// remove job before creating new
 		err = r.client.Delete(context.TODO(), found)
 		if err != nil {
