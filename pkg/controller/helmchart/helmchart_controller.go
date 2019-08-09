@@ -264,7 +264,7 @@ func (r *ReconcileHelmChart) Reconcile(request reconcile.Request) (reconcile.Res
 
 		// remove job before creating new
 		err = r.client.Delete(context.TODO(), found)
-		if err != nil {
+		if err != nil && !errors.IsNotFound(err) {
 			reqLogger.Error(err, "Failed to update helm update job",
 				"Job.Namespace", found.ObjectMeta.Namespace, "Job.Name", found.ObjectMeta.Name)
 			return reconcile.Result{}, err
