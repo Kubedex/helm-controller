@@ -1,7 +1,0 @@
-apiVersion: helm.kubedex.com/v1
-kind: HelmChart
-metadata:
-  name: example-helmchart
-spec:
-  # Add fields here
-  size: 3

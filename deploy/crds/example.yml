@@ -1,0 +1,15 @@
+apiVersion: helm.kubedex.com/v1
+kind: HelmChart
+metadata:
+  name: kubernetes-dashboard
+  namespace: helm-controller
+spec:
+  chart: kubernetes-dashboard
+  ignore: false
+  version: 1.8.0
+  repo: stable
+  targetNamespace: dashboard
+  valuesContent: |-
+    rbac.clusterAdminRole: true
+    enableInsecureLogin: true
+    enableSkipLogin: value: true

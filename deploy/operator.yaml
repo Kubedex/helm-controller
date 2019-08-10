@@ -15,8 +15,7 @@ spec:
       serviceAccountName: helm-controller
       containers:
         - name: helm-controller
-          # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: kubedex/helm-controller:v1.0.1
           command:
           - helm-controller
           imagePullPolicy: Always
@@ -31,3 +30,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "helm-controller"
+            - name: JOB_IMAGE
+              value: "kubedex/helm-controller-jobimage:v1.0.0"
