@@ -45,6 +45,46 @@ EOF
 
 In this example we're installing the kubernetes-dashboard chart into the dashboard namespace and setting some truly dangerous values under valuesContent.
 
+
+# Installation Lifecycle
+
+The helm-controller manifests should be deployed to the Kubernetes cluster using kubectl.
+
+* A single CRD per Helm Chart is applied via kubectl into the helm-controller namespace.
+* The helm-controller watches for CRD changes and triggers a Kubernetes job per chart
+* Each job executes the upgrade logic for the Helm Chart
+* If a CRD is deleted for a chart the helm-controller will totally remove all resources associated with it. Including Helm Chart, old jobs and pods used for previous installations.
+
+## Helm Chart CRD's
+
+CRD's are the single point of truth for what Helm Charts a cluster should be running. You can view all CRD's by executing the following command:
+
+```
+kubectl get helmcharts.helm.kubedex --all-namespaces
+```
+
+Or, to look at the settings of a single CRD you can use this command:
+
+```
+kubectl get -n dashboard helmchart.helm.kubedex kubernetes-dashboard -o yaml
+```
+
+For testing and playing around purposes you can edit the CRD's directly to bump chart version or change values. On change the helm-controller will execute a Kubernetes job to apply the Helm Chart upgrade.
+
+# Troubleshooting
+
+* Check that the helm-controller is running on the cluster
+* Get the contents of the chart CRD on the cluster using kubectl
+* Check the helm-controller and CRD install job logs on the cluster using kubectl logs
+
+To fully reset a chart you can delete the CRD. Then wait for all resources to be removed. Then apply the CRD again.
+
+To remove all charts from a cluster you can run:
+
+```
+kubectl delete helmcharts.helm.kubedex -n helm-controller --all
+```
+
 # Credits
 
 Heavily inspired by the [Rancher Helm Controller](https://github.com/rancher/helm-controller).
