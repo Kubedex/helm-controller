@@ -50,7 +50,7 @@ In this example we're installing the kubernetes-dashboard chart into the dashboa
 
 The helm-controller manifests should be deployed to the Kubernetes cluster using kubectl.
 
-* A single CRD per Helm Chart is applied via kubectl into the helm-controller namespace.
+* A single CRD per Helm Chart is applied via kubectl into the helm-controller namespace
 * The helm-controller watches for CRD changes and triggers a Kubernetes job per chart
 * Each job executes the upgrade logic for the Helm Chart
 * If a CRD is deleted for a chart the helm-controller will totally remove all resources associated with it. Including Helm Chart, old jobs and pods used for previous installations.
