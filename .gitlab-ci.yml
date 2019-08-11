@@ -10,7 +10,7 @@ stages:
 before_script:
   - mkdir -p go
   - export GOPATH=$CI_PROJECT_DIR/go
-  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - docker login --password $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
   - cd "$(gopathify $CI_PROJECT_URL)"
 
 test:
