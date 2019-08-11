@@ -1,4 +1,4 @@
-image: registry.todevski.com/docker/images/golang-builder
+image: kubedex/golang-builder
 
 services:
   - docker:dind
