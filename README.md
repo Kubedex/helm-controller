@@ -22,6 +22,14 @@ cd deploy
 kubectl apply -n helm-controller -f .
 ```
 
+Or, install using helm.
+
+```
+helm repo add kubedex https://kubedex.github.io/charts
+helm repo update
+helm install kubedex/helm-controller
+```
+
 Then to install a chart you can apply the following manifest.
 
 ```
@@ -39,7 +47,7 @@ spec:
   valuesContent: |-
     rbac.clusterAdminRole: true
     enableInsecureLogin: true
-    enableSkipLogin: value: true
+    enableSkipLogin: true
 EOF
 ```
 
