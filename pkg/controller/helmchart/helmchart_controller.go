@@ -339,24 +339,26 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart) *batchv1.Job {
 	}
 	setProxyEnv(job)
 
-	job.Spec.Template.Spec.Volumes = []corev1.Volume{
-		{
-			Name: "values",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: fmt.Sprintf("chart-values-%s", chart.Name),
+	if chart.Spec.ValuesContent == "" {
+		job.Spec.Template.Spec.Volumes = []corev1.Volume{
+			{
+				Name: "values",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: fmt.Sprintf("chart-values-%s", chart.Name),
+						},
 					},
 				},
 			},
-		},
-	}
+		}
 
-	job.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
-		{
-			MountPath: "/config",
-			Name:      "values",
-		},
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{
+			{
+				MountPath: "/config",
+				Name:      "values",
+			},
+		}
 	}
 
 	// Set service account instance as the owner and controller
