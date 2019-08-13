@@ -4,11 +4,9 @@ metadata:
   name: kubernetes-dashboard
   namespace: default
 spec:
-  chart: kubernetes-dashboard
-  ignore: false
+  chart: stable/kubernetes-dashboard
   version: 1.8.0
-  repo: stable
-  targetNamespace: dashboard
+  targetNamespace: kube-system
   valuesContent: |-
     rbac.clusterAdminRole: true
     enableInsecureLogin: true
