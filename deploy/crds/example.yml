@@ -2,7 +2,7 @@ apiVersion: helm.kubedex.com/v1
 kind: HelmChart
 metadata:
   name: kubernetes-dashboard
-  namespace: helm-controller
+  namespace: default
 spec:
   chart: kubernetes-dashboard
   ignore: false
@@ -12,4 +12,4 @@ spec:
   valuesContent: |-
     rbac.clusterAdminRole: true
     enableInsecureLogin: true
-    enableSkipLogin: value: true
+    enableSkipLogin: true

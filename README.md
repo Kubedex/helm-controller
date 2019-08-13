@@ -33,17 +33,16 @@ helm install kubedex/helm-controller
 Then to install a chart you can apply the following manifest.
 
 ```
-cat <<EOF | kubectl apply -n helm-controller -f -
+cat <<EOF | kubectl apply -f -
 apiVersion: helm.kubedex.com/v1
 kind: HelmChart
 metadata:
   name: kubernetes-dashboard
-  namespace: helm-controller
+  namespace: default
 spec:
-  chart: kubernetes-dashboard
+  chart: stable/kubernetes-dashboard
   version: 1.8.0
-  repo: stable
-  targetNamespace: dashboard
+  targetNamespace: kube-system
   valuesContent: |-
     rbac.clusterAdminRole: true
     enableInsecureLogin: true
@@ -51,7 +50,7 @@ spec:
 EOF
 ```
 
-In this example we're installing the kubernetes-dashboard chart into the dashboard namespace and setting some truly dangerous values under valuesContent.
+In this example we're installing the kubernetes-dashboard chart into the kube-system namespace and setting some truly dangerous values under valuesContent.
 
 
 # Installation Lifecycle
@@ -74,7 +73,7 @@ kubectl get helmcharts.helm.kubedex --all-namespaces
 Or, to look at the settings of a single CRD you can use this command:
 
 ```
-kubectl get -n dashboard helmchart.helm.kubedex kubernetes-dashboard -o yaml
+kubectl get helmchart.helm.kubedex kubernetes-dashboard -o yaml
 ```
 
 For testing and playing around purposes you can edit the CRD's directly to bump chart version or change values. On change the helm-controller will execute a Kubernetes job to apply the Helm Chart upgrade.
@@ -90,7 +89,7 @@ To fully reset a chart you can delete the CRD. Then wait for all resources to be
 To remove all charts from a cluster you can run:
 
 ```
-kubectl delete helmcharts.helm.kubedex -n helm-controller --all
+kubectl delete helmcharts.helm.kubedex --all-namespaces --all
 ```
 
 # Credits

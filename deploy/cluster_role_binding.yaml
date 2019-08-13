@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: User
-  name: system:serviceaccount:helm-controller:helm-controller
+  name: system:serviceaccount:default:helm-controller
