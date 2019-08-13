@@ -45,15 +45,9 @@ func (r *ReconcileHelmChart) finalizeHelmChart(reqLogger logr.Logger, m *helmv1.
 
 	status := (*found).Status
 	// job already exist, check the job status
-	if status.Failed >= 1 {
-		// previous job has failed try deleting the job
-		// then next reconcile can re-try
-		if err := r.client.Delete(context.TODO(), job);err != nil {
-			reqLogger.Error(err, "Delete Job remove failed","name", job.ObjectMeta.Name)
-			return err
-		}
-		return err
-	} else if status.Succeeded >= 1 {
+	// we will assume failed and succeeded as a success
+	// because there can be broken charts that could loop this forver
+	if status.Failed >= 1 || status.Succeeded >= 1 {
 		reqLogger.Info("Successfully finalized helm resource")
 		return nil
 	}
