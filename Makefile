@@ -1,6 +1,6 @@
 .PHONY: test
 test:
-	@go test -v ./pkg/controller/vaultsecret
+	@go test -v ./pkg/controller/helmchart
 
 # .PHONY: e2e
 # e2e:
