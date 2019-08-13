@@ -1,5 +1,3 @@
-# helm-controller
-
 ![kubedex helm-controller](https://i1.wp.com/kubedex.com/wp-content/uploads/2019/08/helm-controller.png)
 
 A simple controller built with the [Operator SDK](https://github.com/operator-framework/operator-sdk) that watches for chart CRD's within a namespace and manages installation, upgrades and deletes using Kubernetes jobs.
