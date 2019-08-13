@@ -2,7 +2,7 @@
 
 A simple controller built with the [Operator SDK](https://github.com/operator-framework/operator-sdk) that watches for chart CRD's within a namespace and manages installation, upgrades and deletes using Kubernetes jobs.
 
-The helm-controller creates a Kubernetes [job image](https://github.com/Kubedex/helm-controller-jobimage) per CRD that runs `helm upgrade --install` with various options to make it idempotent. Within each job pod Helm is run in 'tillerless' mode.
+The helm-controller creates a Kubernetes [job pod](https://github.com/Kubedex/helm-controller-jobimage) per CRD that runs `helm upgrade --install` with various options to make it idempotent. Within each job pod Helm is run in 'tillerless' mode.
 
 To upgrade a chart you can use `kubectl` to modify the version or values in the chart CRD. To debug what happened you can use `kubectl logs` on the kubernetes job.
 
