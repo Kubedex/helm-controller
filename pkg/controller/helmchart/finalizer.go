@@ -2,22 +2,19 @@ package helmchart
 
 import (
 	"context"
+	ge "errors"
+	helmv1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
-	helmv1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	ge "errors"
 )
 
 func (r *ReconcileHelmChart) addFinalizer(reqLogger logr.Logger, m *helmv1.HelmChart) error {
-	reqLogger.Info("Adding Finalizer for the helm chart")
 	m.SetFinalizers(append(m.GetFinalizers(), helmChartFinalizer))
-
 	// Update CR
-	err := r.client.Update(context.TODO(), m)
-	if err != nil {
-		reqLogger.Error(err, "Failed to update helm chart with finalizer")
+	if err := r.client.Update(context.TODO(), m);err != nil {
+		reqLogger.Error(err, "Unable to add finalizer to HelmChart resource")
 		return err
 	}
 	return nil
@@ -28,38 +25,30 @@ func (r *ReconcileHelmChart) addFinalizer(reqLogger logr.Logger, m *helmv1.HelmC
 // controller itself.
 func (r *ReconcileHelmChart) finalizeHelmChart(reqLogger logr.Logger, m *helmv1.HelmChart) error {
 	// create a delete job
-	job := r.newJob(m, "delete")
+	job := r.newJob(m)
 	found := &batchv1.Job{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: job.ObjectMeta.Name, Namespace: job.ObjectMeta.Namespace}, found)
+	err := r.client.Get(context.TODO(), types.NamespacedName{
+		Name: job.ObjectMeta.Name,
+		Namespace: job.ObjectMeta.Namespace}, found)
 
 	if err != nil && errors.IsNotFound(err) {
-		err := r.client.Create(context.TODO(), job)
-		if err != nil {
-			reqLogger.Error(err, "Failed create helm destroy job",
-				"Job.Namespace", job.ObjectMeta.Namespace, "Job.Name", job.ObjectMeta.Name)
+		if err := r.client.Create(context.TODO(), job);err != nil {
+			reqLogger.Error(err, "Delete Job creation failed","name", job.ObjectMeta.Name)
 			return err
 		}
 		// job is created re-queue again
 		return ge.New("job update required")
 	} else if err != nil {
-		reqLogger.Error(err, "Failed to get Helm deployment job")
+		reqLogger.Error(err, "Delete Job data not available")
 		return err
 	}
 
 	status := (*found).Status
 	// job already exist, check the job status
-	if status.Failed >= 1 {
-		// previous job has failed try deleting the job
-		// then next reconcile can re-try
-		err := r.client.Delete(context.TODO(), job)
-		if err != nil {
-			reqLogger.Error(err, "Failed delete helm destroy job",
-				"Job.Namespace", job.ObjectMeta.Namespace, "Job.Name", job.ObjectMeta.Name)
-			return err
-		}
-		return err
-	} else if status.Succeeded >= 1 {
-		reqLogger.Info("Successfully finalized helm chart")
+	// we will assume failed and succeeded as a success
+	// because there can be broken charts that could loop this forver
+	if status.Failed >= 1 || status.Succeeded >= 1 {
+		reqLogger.Info("Successfully finalized helm resource")
 		return nil
 	}
 
