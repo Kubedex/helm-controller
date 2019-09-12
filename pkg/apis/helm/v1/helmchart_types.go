@@ -3,6 +3,9 @@ package v1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"os"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/scheme"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -55,5 +58,13 @@ type HelmChartList struct {
 }
 
 func init() {
+	// override group and version if specified for special cases
+	group, groupFound := os.LookupEnv("API_GROUP")
+	version, versionFound := os.LookupEnv("API_VERSION")
+	if groupFound && versionFound {
+		SchemeBuilder = &scheme.Builder{
+			GroupVersion: schema.GroupVersion{Group: group, Version: version},
+		}
+	}
 	SchemeBuilder.Register(&HelmChart{}, &HelmChartList{})
 }
