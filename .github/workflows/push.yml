@@ -15,7 +15,7 @@ jobs:
       uses: ./.github/action/operator-sdk
       with:
         args: build docker.io/kubedex/helm-controller:latest
-    - name: push to bintray
+    - name: push to docker.io
       run: |
         docker login ${DOCKER_REGISTRY_URL} --username ${DOCKER_USERNAME} --password "${DOCKER_PASSWORD}"
         docker push docker.io/kubedex/helm-controller:latest
