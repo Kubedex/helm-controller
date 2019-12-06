@@ -3,8 +3,8 @@ FROM registry.access.redhat.com/ubi7/ubi-minimal:latest
 ### Required OpenShift Certified Labels
 LABEL name="Helm Controller" \
       vendor="Kubedex" \
-      version="v1.2.0" \
-      release="1.2.0" \
+      version="v1.2.1" \
+      release="1.2.1" \
       summary="Kubernetes Operator for Helm." \
       description="A simple way to manage helm charts with a Custom Resource Definitions in k8s. (https://kubedex.com)"
 
