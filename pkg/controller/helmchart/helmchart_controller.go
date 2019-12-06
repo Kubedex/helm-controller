@@ -339,7 +339,7 @@ func (r *ReconcileHelmChart) newJob(chart *helmv1.HelmChart) *batchv1.Job {
 	}
 	setProxyEnv(job)
 
-	if chart.Spec.ValuesContent == "" {
+	if chart.Spec.ValuesContent != "" {
 		job.Spec.Template.Spec.Volumes = []corev1.Volume{
 			{
 				Name: "values",
