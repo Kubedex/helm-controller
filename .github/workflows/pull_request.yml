@@ -1,0 +1,14 @@
+on:
+  pull_request:
+    types: [opened, synchronize]
+name: test on PRs
+jobs:
+  pullRequestOpened:
+    name: pull request opened
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: go test -race ./...
+      uses: ./.github/action/go-tools
+      with:
+        args: test -race ./...
