@@ -1,5 +1,17 @@
 FROM registry.access.redhat.com/ubi7/ubi-minimal:latest
 
+### Required OpenShift Certified Labels
+LABEL name="Helm Controller" \
+      vendor="Kubedex" \
+      version="v1.2.0" \
+      release="1.2.0" \
+      summary="Kubernetes Operator for Helm." \
+      description="A simple way to manage helm charts with a Custom Resource Definitions in k8s. (https://kubedex.com)"
+
+# Required to be in /licenses
+RUN  mkdir /licenses
+COPY LICENSE /licenses
+
 ENV OPERATOR=/usr/local/bin/helm-controller \
     USER_UID=1001 \
     USER_NAME=helm-controller

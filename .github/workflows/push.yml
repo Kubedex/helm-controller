@@ -1,0 +1,29 @@
+name: build latest on push to master and release
+on:
+  push:
+    branches:
+    - master
+    - release/*
+jobs:
+  operator-sdk:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: operator-sdk
+      env:
+        GO111MODULE: "on"
+      uses: ./.github/action/operator-sdk
+      with:
+        args: build docker.io/kubedex/helm-controller:latest
+    - name: push to bintray
+      run: |
+        docker login ${DOCKER_REGISTRY_URL} --username ${DOCKER_USERNAME} --password "${DOCKER_PASSWORD}"
+        docker push docker.io/kubedex/helm-controller:latest
+      env:
+        DOCKER_REGISTRY_URL: ${{ secrets.DOCKER_REGISTRY_URL }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    - name: goreportcard
+      uses: ./.github/action/curl
+      with:
+        args: -d repo=github.com/Kubedex/helm-controller https://goreportcard.com/checks
