@@ -46,7 +46,7 @@ func (r *ReconcileHelmChart) finalizeHelmChart(reqLogger logr.Logger, m *helmv1.
 	status := (*found).Status
 	// job already exist, check the job status
 	// we will assume failed and succeeded as a success
-	// because there can be broken charts that could loop this forver
+	// because there can be broken charts that could loop this forever
 	if status.Failed >= 1 || status.Succeeded >= 1 {
 		reqLogger.Info("Successfully finalized helm resource")
 		return nil

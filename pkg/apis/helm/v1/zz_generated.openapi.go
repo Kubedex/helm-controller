@@ -87,6 +87,12 @@ func schema_pkg_apis_helm_v1_HelmChartSpec(ref common.ReferenceCallback) common.
 							Format: "",
 						},
 					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
 					"repo": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
@@ -134,6 +140,12 @@ func schema_pkg_apis_helm_v1_HelmChartStatus(ref common.ReferenceCallback) commo
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"jobName": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"status": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
