@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"os"
 	"sort"
+	"strconv"
 
 	helmv1 "github.com/Kubedex/helm-controller/pkg/apis/helm/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -452,6 +453,11 @@ func args(chart *helmv1.HelmChart) []string {
 		"--force",
 		"--wait",
 	}
+
+	if spec.Timeout != 0 {
+		args = append(args, "--timeout", strconv.FormatUint(spec.Timeout, 10))
+	}
+
 	if spec.TargetNamespace != "" {
 		args = append(args, "--namespace", spec.TargetNamespace)
 	}

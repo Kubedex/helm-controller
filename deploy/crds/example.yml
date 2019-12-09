@@ -6,6 +6,7 @@ metadata:
 spec:
   chart: stable/kubernetes-dashboard
   version: 1.8.0
+  timeout: 300
   targetNamespace: kube-system
   valuesContent: |-
     rbac.clusterAdminRole: true

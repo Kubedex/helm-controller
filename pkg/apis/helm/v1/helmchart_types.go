@@ -14,19 +14,25 @@ type HelmChartSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	TargetNamespace string                        `json:"targetNamespace,omitempty"`
-	Chart           string                        `json:"chart,omitempty"`
-	Version         string                        `json:"version,omitempty"`
-	Repo            string                        `json:"repo,omitempty"`
-	Set             map[string]intstr.IntOrString `json:"set,omitempty"`
-	ValuesContent   string                        `json:"valuesContent,omitempty"`
-	Ignore          bool                          `json:"ignore,omitempty"`
+	TargetNamespace string `json:"targetNamespace,omitempty"`
+	Chart           string `json:"chart,omitempty"`
+	Version         string `json:"version,omitempty"`
+
+	// +kubebuilder:validation:Maximum=1000
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:ExclusiveMinimum=true
+	Timeout       uint64                        `json:"timeout,omitempty"`
+	Repo          string                        `json:"repo,omitempty"`
+	Set           map[string]intstr.IntOrString `json:"set,omitempty"`
+	ValuesContent string                        `json:"valuesContent,omitempty"`
+	Ignore        bool                          `json:"ignore,omitempty"`
 }
 
 // HelmChartStatus defines the observed state of HelmChart
 // +k8s:openapi-gen=true
 type HelmChartStatus struct {
 	JobName string `json:"jobName,omitempty"`
+	Status  string `json:"status,omitempty"`
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
